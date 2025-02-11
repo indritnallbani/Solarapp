@@ -61,7 +61,7 @@ grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", val
 pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=0, help="Estimated amount of electricity generated per year by the PV system.")
 electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=0.0, help="Expected annual increase in grid electricity prices.") / 100
 pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=0.0, help="Annual maintenance and operation costs of the PV system.")
-pv_lifetime = st.number_input("PV System Lifetime (years)", value=20, help="Expected operational lifespan of the solar PV system.")
+pv_lifetime = st.number_input("PV System Lifetime (years)", value=0, help="Expected operational lifespan of the solar PV system.")
 
 if st.button("Calculate"):
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_electricity_price,
