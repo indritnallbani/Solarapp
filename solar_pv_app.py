@@ -142,7 +142,10 @@ pr = st.slider("Performance Ratio (%)", 50, 90, 80)
 degradation = st.slider("Annual Degradation (% per year)", 0.0, 2.0, 0.5)
 years = st.number_input("Years of Operation", value=25)
 
-if st.button("Simulate PV Production"):
+pv_production_clicked = st.button("Simulate PV Production")
+roi_calculation_clicked = st.button("Calculate ROI")
+
+if pv_production_clicked:
     production, avg_production = calculate_pv_production(kwp, tilt, azimuth, pr, degradation, years)
     fig, ax = plt.subplots()
     ax.plot(range(years), production, marker='o', linestyle='-', label="Yearly Production (kWh)")
@@ -163,7 +166,7 @@ electricity_inflation = st.number_input("Electricity Price Inflation (% per year
 maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=200)
 pv_lifetime = st.number_input("PV System Lifetime (years)", value=30)
 
-if st.button("Calculate ROI"):
+if roi_calculation_clicked:
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_price, pv_yearly_energy,
                                                  electricity_inflation, maintenance_cost, pv_lifetime)
     st.write(f"### Levelized Cost of Energy (LCOE): {lcoe:.4f} €/kWh")
@@ -179,6 +182,7 @@ if st.button("Calculate ROI"):
     ax.set_title("Break-even Analysis")
     ax.legend()
     st.pyplot(fig)
+
     if breakeven_year < pv_lifetime / 2:
         st.success("This is a strong financial decision, as you recover your investment in the earlier half of the system’s lifetime, allowing for many years of net positive savings.")
     else:
