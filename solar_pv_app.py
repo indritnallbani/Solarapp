@@ -89,15 +89,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def calculate_pv_production(kWp, tilt, azimuth, pr, degradation, years=25):
+    """
+    Calculates yearly PV energy production considering tilt, azimuth, and degradation.
+    """
     GHI = 1000  # Approximate yearly irradiance in Luxembourg (kWh/m²)
     tilt_factor = max(0.9 - 0.005 * abs(tilt - 35), 0.7)
     azimuth_factor = max(1 - 0.002 * abs(azimuth), 0.85)
     base_production = kWp * GHI * (pr / 100) * tilt_factor * azimuth_factor
     production_over_years = [base_production * ((1 - degradation / 100) ** year) for year in range(years)]
-    return production_over_years
+    return production_over_years, np.mean(production_over_years)
 
 def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energy_production,
                       electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime):
+    """
+    Computes ROI, break-even point, and Levelized Cost of Energy (LCOE) for a solar PV system.
+    """
     total_pv_energy_production = pv_yearly_energy_production * pv_lifetime
     total_pv_costs = initial_investment + (pv_yearly_maintenance_cost * pv_lifetime)
     pv_electricity_production_price = total_pv_costs / total_pv_energy_production
@@ -137,15 +143,17 @@ degradation = st.slider("Annual Degradation (% per year)", 0.0, 2.0, 0.5)
 years = st.number_input("Years of Operation", value=25)
 
 if st.button("Simulate PV Production"):
-    production = calculate_pv_production(kwp, tilt, azimuth, pr, degradation, years)
+    production, avg_production = calculate_pv_production(kwp, tilt, azimuth, pr, degradation, years)
     fig, ax = plt.subplots()
     ax.plot(range(years), production, marker='o', linestyle='-', label="Yearly Production (kWh)")
+    ax.axhline(avg_production, color='r', linestyle='--', label=f"Avg Production: {avg_production:.2f} kWh")
     ax.set_xlabel("Years")
     ax.set_ylabel("Energy Production (kWh)")
     ax.set_title("PV System Energy Production Over Time")
     ax.legend()
     ax.grid()
     st.pyplot(fig)
+    st.write(f"### Average Yearly Production: {avg_production:.2f} kWh")
 
 st.header("ROI & Break-even Analysis")
 initial_investment = st.number_input("Initial Investment (€)", value=10000)
@@ -171,3 +179,4 @@ if st.button("Calculate ROI"):
     ax.set_title("Break-even Analysis")
     ax.legend()
     st.pyplot(fig)
+
