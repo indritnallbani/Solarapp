@@ -180,3 +180,11 @@ if st.button("Calculate ROI"):
     ax.legend()
     st.pyplot(fig)
 
+    st.subheader("Analysis Summary")
+    st.write(f"Based on your input, the solar PV system will have a Levelized Cost of Energy (LCOE) of {lcoe:.4f} €/kWh. This means that over the system's lifetime, this is the average cost per unit of electricity generated.")
+    st.write(f"The system is projected to break even in {breakeven_year} years. This indicates that from that year onward, your investment will start generating net savings, helping you reduce electricity costs.")
+    
+    if breakeven_year < pv_lifetime / 2:
+        st.success("This is a strong financial decision, as you recover your investment in the earlier half of the system’s lifetime, allowing for many years of net positive savings.")
+    else:
+
