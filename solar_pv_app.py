@@ -142,10 +142,18 @@ pr = st.slider("Performance Ratio (%)", 50, 90, 80)
 degradation = st.slider("Annual Degradation (% per year)", 0.0, 2.0, 0.5)
 years = st.number_input("Years of Operation", value=25)
 
-pv_production_clicked = st.button("Simulate PV Production")
-roi_calculation_clicked = st.button("Calculate ROI")
+if "pv_production_clicked" not in st.session_state:
+    st.session_state.pv_production_clicked = False
+if "roi_calculation_clicked" not in st.session_state:
+    st.session_state.roi_calculation_clicked = False
 
-if pv_production_clicked:
+if st.button("Simulate PV Production"):
+    st.session_state.pv_production_clicked = True
+
+if st.button("Calculate ROI"):
+    st.session_state.roi_calculation_clicked = True
+
+if st.session_state.pv_production_clicked:
     production, avg_production = calculate_pv_production(kwp, tilt, azimuth, pr, degradation, years)
     fig, ax = plt.subplots()
     ax.plot(range(years), production, marker='o', linestyle='-', label="Yearly Production (kWh)")
@@ -166,7 +174,7 @@ electricity_inflation = st.number_input("Electricity Price Inflation (% per year
 maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=200)
 pv_lifetime = st.number_input("PV System Lifetime (years)", value=30)
 
-if roi_calculation_clicked:
+if st.session_state.roi_calculation_clicked:
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_price, pv_yearly_energy,
                                                  electricity_inflation, maintenance_cost, pv_lifetime)
     st.write(f"### Levelized Cost of Energy (LCOE): {lcoe:.4f} €/kWh")
