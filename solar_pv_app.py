@@ -46,7 +46,7 @@ def plot_break_even_graph(df, breakeven_year):
     st.pyplot(fig)
     
     st.subheader("Yearly Profit from Electricity Production")
-    st.dataframe(df.set_index("Year")["Yearly Savings (€)"].T)
+    st.dataframe(df.set_index("Year")["Yearly Savings (€)"].T).T
 
 st.title("Solar PV ROI & Break-even Calculator")
 
