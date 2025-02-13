@@ -30,4 +30,4 @@ with st.form("new_entry_form"):
 if not st.session_state['data'].empty:
     if st.button("Delete Last Row"):
         st.session_state['data'] = st.session_state['data'].iloc[:-1]
-        st.experimental_rerun()
+        st.rerun()
