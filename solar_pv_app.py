@@ -33,14 +33,14 @@ def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energ
     return df, breakeven_year, pv_electricity_production_price
 
 def plot_graphs(df, breakeven_year):
-    st.subheader("Yearly Savings Over Time")
-    fig, ax = plt.subplots()
-    ax.plot(df["Year"], df["Yearly Savings (€)"], marker='o', label="Yearly Savings (€)")
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Savings (€)")
-    ax.set_title("Yearly Electricity Savings")
-    ax.legend()
-    st.pyplot(fig)
+    #st.subheader("Yearly Savings Over Time")
+    #fig, ax = plt.subplots()
+    #ax.plot(df["Year"], df["Yearly Savings (€)"], marker='o', label="Yearly Savings (€)")
+    #ax.set_xlabel("Year")
+    #ax.set_ylabel("Savings (€)")
+    #ax.set_title("Yearly Electricity Savings")
+    #ax.legend()
+    #st.pyplot(fig)
     
     st.subheader("Break-even Analysis")
     fig, ax = plt.subplots()
