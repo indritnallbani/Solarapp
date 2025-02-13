@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import io
 
 def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energy_production,
                       electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime):
@@ -46,35 +45,16 @@ def plot_break_even_graph(df, breakeven_year):
     st.subheader("Yearly Profit from Electricity Production")
     st.dataframe(df.set_index("Year").transpose().round(2))
 
-def generate_report(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, sheet_name="ROI Analysis")
-    processed_data = output.getvalue()
-    return processed_data
-
 st.title("Solar PV ROI & Break-even Calculator")
 
-if "previous_inputs" not in st.session_state:
-    st.session_state.previous_inputs = {}
-
-initial_investment = st.number_input("Initial Investment (€)", value=st.session_state.previous_inputs.get("initial_investment", 10000), help="Total upfront cost of the solar PV system, including installation.")
-grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=st.session_state.previous_inputs.get("grid_electricity_price", 0.25), help="Current price of electricity from the grid.")
-pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=st.session_state.previous_inputs.get("pv_yearly_energy_production", 5000), help="Estimated amount of electricity generated per year by the PV system.")
-electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=st.session_state.previous_inputs.get("electricity_price_inflation", 2.0), help="Expected annual increase in grid electricity prices.") / 100
-pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=st.session_state.previous_inputs.get("pv_yearly_maintenance_cost", 200), help="Annual maintenance and operation costs of the PV system.")
-pv_lifetime = st.number_input("PV System Lifetime (years)", value=st.session_state.previous_inputs.get("pv_lifetime", 30), help="Expected operational lifespan of the solar PV system.")
+initial_investment = st.number_input("Initial Investment (€)", value=10000, help="Total upfront cost of the solar PV system, including installation.")
+grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=0.25, help="Current price of electricity from the grid.")
+pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=5000, help="Estimated amount of electricity generated per year by the PV system.")
+electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=2.0, help="Expected annual increase in grid electricity prices.") / 100
+pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=200, help="Annual maintenance and operation costs of the PV system.")
+pv_lifetime = st.number_input("PV System Lifetime (years)", value=30, help="Expected operational lifespan of the solar PV system.")
 
 if st.button("Calculate"):
-    st.session_state.previous_inputs = {
-        "initial_investment": initial_investment,
-        "grid_electricity_price": grid_electricity_price,
-        "pv_yearly_energy_production": pv_yearly_energy_production,
-        "electricity_price_inflation": electricity_price_inflation,
-        "pv_yearly_maintenance_cost": pv_yearly_maintenance_cost,
-        "pv_lifetime": pv_lifetime
-    }
-    
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_electricity_price,
                                                 pv_yearly_energy_production,
                                                 electricity_price_inflation,
@@ -84,9 +64,6 @@ if st.button("Calculate"):
     st.write(f"### LCOE: {lcoe:.4f} €/kWh")
     st.write(f"### Break-even Year: {breakeven_year}")
     plot_break_even_graph(df, breakeven_year)
-    
-    st.subheader("Download Report")
-    st.download_button(label="Download Excel Report", data=generate_report(df), file_name="Solar_PV_ROI_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     
     # Generate a detailed commentary based on results
     st.subheader("Analysis Summary")
