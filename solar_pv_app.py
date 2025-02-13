@@ -1,6 +1,27 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import io
+
+def check_password():
+    """Password protection function"""
+    def password_entered():
+        if st.session_state["password"] == "clearnanotech":
+            st.session_state["authenticated"] = True
+        else:
+            st.session_state["authenticated"] = False
+            st.error("Incorrect password. Please try again.")
+    
+    if "authenticated" not in st.session_state:
+        st.session_state["authenticated"] = False
+    
+    if not st.session_state["authenticated"]:
+        st.text_input("Enter Password:", type="password", on_change=password_entered, key="password")
+        return False
+    return True
+
+if not check_password():
+    st.stop()
 
 def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energy_production,
                       electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime):
@@ -45,6 +66,13 @@ def plot_break_even_graph(df, breakeven_year):
     st.subheader("Yearly Profit from Electricity Production")
     st.dataframe(df.set_index("Year").transpose().round(2))
 
+def generate_report(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name="ROI Analysis")
+    processed_data = output.getvalue()
+    return processed_data
+
 st.title("Solar PV ROI & Break-even Calculator")
 
 initial_investment = st.number_input("Initial Investment (€)", value=10000, help="Total upfront cost of the solar PV system, including installation.")
@@ -64,6 +92,9 @@ if st.button("Calculate"):
     st.write(f"### LCOE: {lcoe:.4f} €/kWh")
     st.write(f"### Break-even Year: {breakeven_year}")
     plot_break_even_graph(df, breakeven_year)
+    
+    st.subheader("Download Report")
+    st.download_button(label="Download Excel Report", data=generate_report(df), file_name="Solar_PV_ROI_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     
     # Generate a detailed commentary based on results
     st.subheader("Analysis Summary")
