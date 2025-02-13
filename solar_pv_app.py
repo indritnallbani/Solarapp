@@ -32,16 +32,7 @@ def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energ
     df = pd.DataFrame(data)
     return df, breakeven_year, pv_electricity_production_price
 
-def plot_graphs(df, breakeven_year):
-    #st.subheader("Yearly Savings Over Time")
-    #fig, ax = plt.subplots()
-    #ax.plot(df["Year"], df["Yearly Savings (€)"], marker='o', label="Yearly Savings (€)")
-    #ax.set_xlabel("Year")
-    #ax.set_ylabel("Savings (€)")
-    #ax.set_title("Yearly Electricity Savings")
-    #ax.legend()
-    #st.pyplot(fig)
-    
+def plot_break_even_graph(df, breakeven_year):
     st.subheader("Break-even Analysis")
     fig, ax = plt.subplots()
     ax.plot(df["Year"], df["Cumulative Cash Flow (€)"], marker='o', label="Cumulative Cash Flow (€)")
@@ -53,15 +44,18 @@ def plot_graphs(df, breakeven_year):
     ax.set_title("Break-even Analysis")
     ax.legend()
     st.pyplot(fig)
+    
+    st.subheader("Yearly Profit from Electricity Production")
+    st.dataframe(df.set_index("Year")["Yearly Savings (€)"].T)
 
 st.title("Solar PV ROI & Break-even Calculator")
 
-initial_investment = st.number_input("Initial Investment (€)", value=0.0, help="Total upfront cost of the solar PV system, including installation.")
-grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=0.0, help="Current price of electricity from the grid.")
-pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=0, help="Estimated amount of electricity generated per year by the PV system.")
-electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=0.0, help="Expected annual increase in grid electricity prices.") / 100
-pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=0.0, help="Annual maintenance and operation costs of the PV system.")
-pv_lifetime = st.number_input("PV System Lifetime (years)", value=0, help="Expected operational lifespan of the solar PV system.")
+initial_investment = st.number_input("Initial Investment (€)", value=10000, help="Total upfront cost of the solar PV system, including installation.")
+grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=0.25, help="Current price of electricity from the grid.")
+pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=5000, help="Estimated amount of electricity generated per year by the PV system.")
+electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=2.0, help="Expected annual increase in grid electricity prices.") / 100
+pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=200, help="Annual maintenance and operation costs of the PV system.")
+pv_lifetime = st.number_input("PV System Lifetime (years)", value=30, help="Expected operational lifespan of the solar PV system.")
 
 if st.button("Calculate"):
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_electricity_price,
@@ -72,7 +66,7 @@ if st.button("Calculate"):
     
     st.write(f"### LCOE: {lcoe:.4f} €/kWh")
     st.write(f"### Break-even Year: {breakeven_year}")
-    plot_graphs(df, breakeven_year)
+    plot_break_even_graph(df, breakeven_year)
     
     # Generate a detailed commentary based on results
     st.subheader("Analysis Summary")
