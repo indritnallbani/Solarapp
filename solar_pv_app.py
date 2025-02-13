@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-
+import io
 def check_password():
     """Password protection function"""
     def password_entered():
