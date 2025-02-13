@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import io
 
 def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energy_production,
-                      electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime):
+                      electricity_price_inflation_list, pv_yearly_maintenance_cost, pv_lifetime):
     total_pv_energy_production = pv_yearly_energy_production * pv_lifetime
     total_pv_costs = initial_investment + (pv_yearly_maintenance_cost * pv_lifetime)
     pv_electricity_production_price = total_pv_costs / total_pv_energy_production
@@ -20,10 +21,11 @@ def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energ
     }
     
     for year in years:
-        adjusted_grid_price = grid_electricity_price * ((1 + electricity_price_inflation) ** (year - 1))
+        inflation_rate = electricity_price_inflation_list[min(year - 1, len(electricity_price_inflation_list) - 1)]
+        adjusted_grid_price = grid_electricity_price * ((1 + inflation_rate) ** (year - 1))
         data["Grid Electricity Price (€/kWh)"].append(adjusted_grid_price)
         yearly_savings = (adjusted_grid_price - pv_electricity_production_price) * pv_yearly_energy_production
-        data["Yearly Savings (€)"].append(yearly_savings)
+        data["Yearly Savings (€)"].append(round(yearly_savings, 2))
         cumulative_cash_flow += yearly_savings - pv_yearly_maintenance_cost
         data["Cumulative Cash Flow (€)"].append(cumulative_cash_flow)
         if breakeven_year is None and cumulative_cash_flow >= 0:
@@ -34,46 +36,60 @@ def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energ
 
 def plot_break_even_graph(df, breakeven_year):
     st.subheader("Break-even Analysis")
-    fig, ax = plt.subplots()
-    ax.plot(df["Year"], df["Cumulative Cash Flow (€)"], marker='o', label="Cumulative Cash Flow (€)")
-    ax.axhline(0, color='r', linestyle='--', label="Break-even Line")
+    fig = px.line(df, x="Year", y="Cumulative Cash Flow (€)", markers=True,
+                  title="Break-even Analysis",
+                  labels={"Cumulative Cash Flow (€)": "Cumulative Cash Flow (€)", "Year": "Year"})
+    fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Break-even Line")
     if breakeven_year:
-        ax.axvline(breakeven_year, color='g', linestyle='--', label=f"Break-even Year ({breakeven_year})")
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Cumulative Cash Flow (€)")
-    ax.set_title("Break-even Analysis")
-    ax.legend()
-    st.pyplot(fig)
+        fig.add_vline(x=breakeven_year, line_dash="dash", line_color="green", annotation_text=f"Break-even Year ({breakeven_year})")
+    st.plotly_chart(fig)
     
     st.subheader("Yearly Profit from Electricity Production")
-    #st.dataframe(df.set_index("Year").transpose().round(2))
-    st.data_editor(
-    df.transpose().round(2),  # Transpose to show years as columns
-    use_container_width=True,  # Make it responsive
-    hide_index=False,  # Show row index
-    column_config={
-        df.transpose().index.name: st.column_config.Column(width="small"),  # Freeze first column
-    },
-)
+    st.dataframe(df.set_index("Year").transpose().round(2))
+
+def generate_report(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, sheet_name="ROI Analysis")
+    processed_data = output.getvalue()
+    return processed_data
+
 st.title("Solar PV ROI & Break-even Calculator")
 
-initial_investment = st.number_input("Initial Investment (€)", value=10000, help="Total upfront cost of the solar PV system, including installation.")
-grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=0.25, help="Current price of electricity from the grid.")
-pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=5000, help="Estimated amount of electricity generated per year by the PV system.")
-electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=2.0, help="Expected annual increase in grid electricity prices.") / 100
-pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=200, help="Annual maintenance and operation costs of the PV system.")
-pv_lifetime = st.number_input("PV System Lifetime (years)", value=30, help="Expected operational lifespan of the solar PV system.")
+if "previous_inputs" not in st.session_state:
+    st.session_state.previous_inputs = {}
+
+initial_investment = st.number_input("Initial Investment (€)", value=st.session_state.previous_inputs.get("initial_investment", 10000), help="Total upfront cost of the solar PV system, including installation.")
+grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=st.session_state.previous_inputs.get("grid_electricity_price", 0.25), help="Current price of electricity from the grid.")
+pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=st.session_state.previous_inputs.get("pv_yearly_energy_production", 5000), help="Estimated amount of electricity generated per year by the PV system.")
+
+st.subheader("Electricity Price Inflation Rate Per Year")
+electricity_price_inflation_list = [st.number_input(f"Year {i+1} Inflation (%)", value=2.0, min_value=0.0, max_value=10.0, step=0.1) / 100 for i in range(30)]
+
+pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=st.session_state.previous_inputs.get("pv_yearly_maintenance_cost", 200), help="Annual maintenance and operation costs of the PV system.")
+pv_lifetime = st.number_input("PV System Lifetime (years)", value=st.session_state.previous_inputs.get("pv_lifetime", 30), help="Expected operational lifespan of the solar PV system.")
 
 if st.button("Calculate"):
+    st.session_state.previous_inputs = {
+        "initial_investment": initial_investment,
+        "grid_electricity_price": grid_electricity_price,
+        "pv_yearly_energy_production": pv_yearly_energy_production,
+        "pv_yearly_maintenance_cost": pv_yearly_maintenance_cost,
+        "pv_lifetime": pv_lifetime
+    }
+    
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_electricity_price,
                                                 pv_yearly_energy_production,
-                                                electricity_price_inflation,
+                                                electricity_price_inflation_list,
                                                 pv_yearly_maintenance_cost,
                                                 pv_lifetime)
     
     st.write(f"### LCOE: {lcoe:.4f} €/kWh")
     st.write(f"### Break-even Year: {breakeven_year}")
     plot_break_even_graph(df, breakeven_year)
+    
+    st.subheader("Download Report")
+    st.download_button(label="Download Excel Report", data=generate_report(df), file_name="Solar_PV_ROI_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     
     # Generate a detailed commentary based on results
     st.subheader("Analysis Summary")
