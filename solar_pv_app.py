@@ -4,7 +4,7 @@ import plotly.express as px
 import io
 
 def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energy_production,
-                      electricity_price_inflation_list, pv_yearly_maintenance_cost, pv_lifetime):
+                      electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime):
     total_pv_energy_production = pv_yearly_energy_production * pv_lifetime
     total_pv_costs = initial_investment + (pv_yearly_maintenance_cost * pv_lifetime)
     pv_electricity_production_price = total_pv_costs / total_pv_energy_production
@@ -21,8 +21,7 @@ def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energ
     }
     
     for year in years:
-        inflation_rate = electricity_price_inflation_list[min(year - 1, len(electricity_price_inflation_list) - 1)]
-        adjusted_grid_price = grid_electricity_price * ((1 + inflation_rate) ** (year - 1))
+        adjusted_grid_price = grid_electricity_price * ((1 + electricity_price_inflation) ** (year - 1))
         data["Grid Electricity Price (€/kWh)"].append(adjusted_grid_price)
         yearly_savings = (adjusted_grid_price - pv_electricity_production_price) * pv_yearly_energy_production
         data["Yearly Savings (€)"].append(round(yearly_savings, 2))
@@ -62,10 +61,7 @@ if "previous_inputs" not in st.session_state:
 initial_investment = st.number_input("Initial Investment (€)", value=st.session_state.previous_inputs.get("initial_investment", 10000), help="Total upfront cost of the solar PV system, including installation.")
 grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=st.session_state.previous_inputs.get("grid_electricity_price", 0.25), help="Current price of electricity from the grid.")
 pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=st.session_state.previous_inputs.get("pv_yearly_energy_production", 5000), help="Estimated amount of electricity generated per year by the PV system.")
-
-st.subheader("Electricity Price Inflation Rate Per Year")
-electricity_price_inflation_list = [st.number_input(f"Year {i+1} Inflation (%)", value=2.0, min_value=0.0, max_value=10.0, step=0.1) / 100 for i in range(30)]
-
+electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=st.session_state.previous_inputs.get("electricity_price_inflation", 2.0), help="Expected annual increase in grid electricity prices.") / 100
 pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=st.session_state.previous_inputs.get("pv_yearly_maintenance_cost", 200), help="Annual maintenance and operation costs of the PV system.")
 pv_lifetime = st.number_input("PV System Lifetime (years)", value=st.session_state.previous_inputs.get("pv_lifetime", 30), help="Expected operational lifespan of the solar PV system.")
 
@@ -74,13 +70,14 @@ if st.button("Calculate"):
         "initial_investment": initial_investment,
         "grid_electricity_price": grid_electricity_price,
         "pv_yearly_energy_production": pv_yearly_energy_production,
+        "electricity_price_inflation": electricity_price_inflation,
         "pv_yearly_maintenance_cost": pv_yearly_maintenance_cost,
         "pv_lifetime": pv_lifetime
     }
     
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_electricity_price,
                                                 pv_yearly_energy_production,
-                                                electricity_price_inflation_list,
+                                                electricity_price_inflation,
                                                 pv_yearly_maintenance_cost,
                                                 pv_lifetime)
     
