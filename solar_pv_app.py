@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import sqlite3
 import io
+
 def check_password():
-    """Password protection function"""
     def password_entered():
         if st.session_state["password"] == "clearnanotech":
             st.session_state["authenticated"] = True
@@ -21,6 +22,56 @@ def check_password():
 
 if not check_password():
     st.stop()
+
+def get_inputs_from_database():
+    conn = sqlite3.connect("roi.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM inputs ORDER BY id DESC LIMIT 1")
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            "initial_investment": row[1],
+            "grid_electricity_price": row[2],
+            "pv_yearly_energy_production": row[3],
+            "electricity_price_inflation": row[4],
+            "pv_yearly_maintenance_cost": row[5],
+            "pv_lifetime": row[6]
+        }
+    return {
+        "initial_investment": 10000,
+        "grid_electricity_price": 0.25,
+        "pv_yearly_energy_production": 5000,
+        "electricity_price_inflation": 2.0,
+        "pv_yearly_maintenance_cost": 200,
+        "pv_lifetime": 30
+    }
+
+def save_outputs_to_database(initial_investment, grid_electricity_price, pv_yearly_energy_production,
+                             electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime,
+                             lcoe, breakeven_year):
+    conn = sqlite3.connect("roi.db")
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS outputs (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        initial_investment REAL,
+                        grid_electricity_price REAL,
+                        pv_yearly_energy_production REAL,
+                        electricity_price_inflation REAL,
+                        pv_yearly_maintenance_cost REAL,
+                        pv_lifetime INTEGER,
+                        lcoe REAL,
+                        breakeven_year INTEGER)''')
+    cursor.execute('''INSERT INTO outputs (initial_investment, grid_electricity_price, pv_yearly_energy_production,
+                                           electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime,
+                                           lcoe, breakeven_year)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
+                   (initial_investment, grid_electricity_price, pv_yearly_energy_production,
+                    electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime,
+                    lcoe, breakeven_year))
+    conn.commit()
+    conn.close()
 
 def calculate_pv_roi(initial_investment, grid_electricity_price, pv_yearly_energy_production,
                       electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime):
@@ -61,25 +112,18 @@ def plot_break_even_graph(df, breakeven_year):
     if breakeven_year:
         fig.add_vline(x=breakeven_year, line_dash="dash", line_color="green", annotation_text=f"Break-even Year ({breakeven_year})")
     st.plotly_chart(fig)
-    
-    st.subheader("Yearly Profit from Electricity Production")
-    st.dataframe(df.set_index("Year").transpose().round(2))
-
-def generate_report(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, sheet_name="ROI Analysis")
-    processed_data = output.getvalue()
-    return processed_data
+    return fig
 
 st.title("Solar PV ROI & Break-even Calculator")
 
-initial_investment = st.number_input("Initial Investment (€)", value=10000, help="Total upfront cost of the solar PV system, including installation.")
-grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=0.25, help="Current price of electricity from the grid.")
-pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=5000, help="Estimated amount of electricity generated per year by the PV system.")
-electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=2.0, help="Expected annual increase in grid electricity prices.") / 100
-pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=200, help="Annual maintenance and operation costs of the PV system.")
-pv_lifetime = st.number_input("PV System Lifetime (years)", value=30, help="Expected operational lifespan of the solar PV system.")
+inputs = get_inputs_from_database()
+
+initial_investment = st.number_input("Initial Investment (€)", value=inputs["initial_investment"])
+grid_electricity_price = st.number_input("Grid Electricity Price (€/kWh)", value=inputs["grid_electricity_price"])
+pv_yearly_energy_production = st.number_input("PV Yearly Energy Production (kWh)", value=inputs["pv_yearly_energy_production"])
+electricity_price_inflation = st.number_input("Electricity Price Inflation (% per year)", value=inputs["electricity_price_inflation"]) / 100
+pv_yearly_maintenance_cost = st.number_input("PV Yearly Maintenance Cost (€ per year)", value=inputs["pv_yearly_maintenance_cost"])
+pv_lifetime = st.number_input("PV System Lifetime (years)", value=inputs["pv_lifetime"])
 
 if st.button("Calculate"):
     df, breakeven_year, lcoe = calculate_pv_roi(initial_investment, grid_electricity_price,
@@ -87,20 +131,10 @@ if st.button("Calculate"):
                                                 electricity_price_inflation,
                                                 pv_yearly_maintenance_cost,
                                                 pv_lifetime)
+    save_outputs_to_database(initial_investment, grid_electricity_price, pv_yearly_energy_production,
+                             electricity_price_inflation, pv_yearly_maintenance_cost, pv_lifetime,
+                             lcoe, breakeven_year)
     
     st.write(f"### LCOE: {lcoe:.4f} €/kWh")
     st.write(f"### Break-even Year: {breakeven_year}")
     plot_break_even_graph(df, breakeven_year)
-    
-    st.subheader("Download Report")
-    st.download_button(label="Download Excel Report", data=generate_report(df), file_name="Solar_PV_ROI_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    
-    # Generate a detailed commentary based on results
-    st.subheader("Analysis Summary")
-    st.write(f"Based on your input, the solar PV system will have a Levelized Cost of Energy (LCOE) of {lcoe:.4f} €/kWh. This means that over the system's lifetime, this is the average cost per unit of electricity generated.")
-    st.write(f"The system is projected to break even in {breakeven_year} years. This indicates that from that year onward, your investment will start generating net savings, helping you reduce electricity costs.")
-    
-    if breakeven_year < pv_lifetime / 2:
-        st.success("This is a strong financial decision, as you recover your investment in the earlier half of the system’s lifetime, allowing for many years of net positive savings.")
-    else:
-        st.warning("The payback period is longer, meaning long-term savings will take time to accumulate. However, you will still experience cost reductions over the years.")
