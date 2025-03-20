@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 def load_data(file):
     df = pd.read_excel(file, engine='openpyxl')  # Load Excel file
     df.columns = df.columns.str.strip()  # Remove extra spaces in headers
-    df[df.columns[0]] = pd.to_datetime(df[df.columns[0]], format="%d/%m/%Y %H:%M:%S")  # Convert date column
+    df[df.columns[0]] = pd.to_datetime(df[df.columns[0]], format="%m/%d/%Y %H:%M:%S")  # Convert date column
     return df
 
 def process_data(df, group_by):
